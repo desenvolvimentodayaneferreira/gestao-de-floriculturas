@@ -1,0 +1,64 @@
+{
+  "name": "gestao-de-floriculturas",
+  "productName": "Gestão de Floriculturas",
+  "version": "2.0.0",
+  "description": "Gestão de Floriculturas by KAI - sistema da floricultura (vendas, encomendas, estoque, fichas técnicas e frota)",
+  "author": "Dayane Ferreira (KAI)",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "servidor": "node servidor/iniciar.js",
+    "exemplo": "node scripts/exemplo.js",
+    "check": "node scripts/check.js",
+    "test": "node --test testes/*.test.js",
+    "autoteste": "node scripts/autoteste.js",
+    "instalador": "npm run check && npm test && electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "br.com.kai.floriculturas",
+    "productName": "Gestão de Floriculturas",
+    "copyright": "Gestão de Floriculturas é uma tecnologia da KAI — Kaelor Artificial Intelligence",
+    "directories": {
+      "output": "instalador",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "servidor/**/*",
+      "web/**/*",
+      "package.json"
+    ],
+    "electronLanguages": [
+      "pt-BR",
+      "en-US"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "language": "1046",
+      "installerLanguages": [
+        "pt_BR"
+      ],
+      "multiLanguageInstaller": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Gestão de Floriculturas",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "Gestao-Floriculturas-Instalador-${version}.${ext}",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "uninstallDisplayName": "Gestão de Floriculturas"
+    }
+  },
+  "devDependencies": {
+    "electron": "44.0.0",
+    "electron-builder": "24.13.3"
+  }
+}
