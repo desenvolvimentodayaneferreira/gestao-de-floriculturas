@@ -13,7 +13,7 @@ const { texto, registrar } = require("./comum");
 
 const VERSAO = require("../package.json").version;
 const BACKUPS_MANTIDOS = 60;
-const PADRAO_BACKUP = /^floricultura-\d{4}-\d{2}-\d{2}(-\d{6})?\.db$/;
+const PADRAO_BACKUP = /^operatto-\d{4}-\d{2}-\d{2}(-\d{6})?\.db$/;
 
 function listarCopias(pasta) {
   if (!fs.existsSync(pasta)) return [];
@@ -27,7 +27,7 @@ function copiar(banco, pasta, { agora = false } = {}) {
   const d = new Date();
   const dia = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const hora = [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, "0")).join("");
-  const destino = path.join(pasta, agora ? `floricultura-${dia}-${hora}.db` : `floricultura-${dia}.db`);
+  const destino = path.join(pasta, agora ? `operatto-${dia}-${hora}.db` : `operatto-${dia}.db`);
   if (!fs.existsSync(destino)) banco.copiar(destino);
   const antigas = fs.readdirSync(pasta).filter((nome) => PADRAO_BACKUP.test(nome)).sort();
   antigas.slice(0, Math.max(0, antigas.length - BACKUPS_MANTIDOS)).forEach((nome) => fs.unlinkSync(path.join(pasta, nome)));
@@ -36,7 +36,7 @@ function copiar(banco, pasta, { agora = false } = {}) {
 
 function iniciarServidor({ pastaDados, porta = 8686, host = "127.0.0.1", copias = true }) {
   fs.mkdirSync(pastaDados, { recursive: true });
-  const banco = abrir(path.join(pastaDados, "floricultura.db"));
+  const banco = abrir(path.join(pastaDados, "operatto.db"));
   prepararBase(banco);
 
   const acesso = criarAcesso(banco);
@@ -54,7 +54,7 @@ function iniciarServidor({ pastaDados, porta = 8686, host = "127.0.0.1", copias 
 
   rota("GET", "/api/sistema", () => ({
     versao: VERSAO,
-    loja: banco.config("loja", { nome: "Floricultura Exemplo" }),
+    loja: banco.config("loja", { nome: "Minha floricultura" }),
     exigir_cpf: banco.config("exigir_cpf", true),
     demonstracao: Boolean(banco.config("demonstracao")),
     unidades: UNIDADES,
@@ -98,7 +98,7 @@ function iniciarServidor({ pastaDados, porta = 8686, host = "127.0.0.1", copias 
     pronto,
     banco,
     pastaCopias,
-    arquivoBanco: path.join(pastaDados, "floricultura.db"),
+    arquivoBanco: path.join(pastaDados, "operatto.db"),
     copiarAgora: () => copiar(banco, pastaCopias, { agora: true }),
     async parar() {
       clearInterval(temporizador);

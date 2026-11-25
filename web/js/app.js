@@ -50,7 +50,7 @@
     $("#raiz").innerHTML = `
       <div class="app">
         <aside class="lateral">
-          <div class="marca" role="img" aria-label="Gestão de Floriculturas"></div>
+          <div class="marca"><b>Floricultura</b><small>SISTEMA DE GESTÃO</small></div>
           <nav>${permitidas().map(([id, rotulo]) => `<a href="#/${id}" data-menu="${id}">${icone(id)}<span>${rotulo}</span></a>`).join("")}</nav>
           <div class="usuario">
             <span class="avatar">${esc(u.nome[0] || "F")}</span>
@@ -62,21 +62,21 @@
           </div>
         </aside>
         <main class="principal">
-          ${FA.estado.sistema.demonstracao ? `<div class="faixa-demo"><span><b>Modo demonstração</b> · dados fictícios para conhecer o sistema. Nada aqui afeta os dados reais da loja.</span>${window.floricultura ? '<button class="btn pequeno" data-sair-demo>Sair da demonstração</button>' : ""}</div>` : ""}
+          ${FA.estado.sistema.demonstracao ? `<div class="faixa-demo"><span><b>Modo demonstração</b> · dados fictícios para conhecer o sistema. Nada aqui afeta os dados reais da loja.</span>${window.operatto ? '<button class="btn pequeno" data-sair-demo>Sair da demonstração</button>' : ""}</div>` : ""}
           <header class="topo"><div><h1 id="titulo"></h1><p id="subtitulo"></p></div><span class="loja">${esc(loja)}</span></header>
           <div id="conteudo"></div>
-          <footer class="rodape">Gestão de Floriculturas ${esc(FA.estado.sistema.versao)} · tecnologia KAI — Kaelor Artificial Intelligence</footer>
+          <footer class="rodape">Sistema de Gestão para Floriculturas · versão ${esc(FA.estado.sistema.versao)} · <a href="/privacidade.html">Privacidade e segurança</a></footer>
         </main>
       </div>`;
     $("[data-sair]").addEventListener("click", () => sair());
     $("[data-senha]").addEventListener("click", trocarSenha);
-    $("[data-sair-demo]")?.addEventListener("click", () => window.floricultura.demonstracao(false));
+    $("[data-sair-demo]")?.addEventListener("click", () => window.operatto.demonstracao(false));
   }
 
   function trocarSenha() {
     formulario({
       titulo: "Trocar minha senha",
-      intro: "A nova senha precisa de pelo menos 8 caracteres, com letras e números.",
+      intro: "A nova senha deve ter de 6 a 8 números.",
       campos: [
         { nome: "atual", rotulo: "Senha atual", tipo: "senha", obrigatorio: true, largo: true },
         { nome: "nova", rotulo: "Nova senha", tipo: "senha", obrigatorio: true },
@@ -148,20 +148,20 @@
     $("#raiz").innerHTML = `
       <div class="entrada">
         <div class="entrada-cartao">
-          <img class="entrada-logo" src="assets/logo.svg" alt="Gestão de Floriculturas"/>
+          <div class="entrada-marca"><b>Floricultura</b><small>SISTEMA DE GESTÃO</small></div>
           ${conteudo}
         </div>
-        <p class="entrada-rodape">Gestão de Floriculturas · tecnologia KAI — Kaelor Artificial Intelligence</p>
+        <p class="entrada-rodape">Sistema de Gestão para Floriculturas · <a href="/privacidade.html">Privacidade e segurança</a></p>
       </div>`;
   }
 
   // Botões do modo demonstração (dados fictícios, separados dos reais).
-  const botaoVerDemo = () => (window.floricultura ? '<button type="button" class="btn largo suave" data-ver-demo>Conhecer com dados de demonstração</button>' : "");
+  const botaoVerDemo = () => (window.operatto ? '<button type="button" class="btn largo suave" data-ver-demo>Conhecer com dados de demonstração</button>' : "");
   function ligarBotoesDemo() {
     $("[data-ver-demo]")?.addEventListener("click", (e) => {
       e.target.disabled = true;
       e.target.textContent = "Preparando a demonstração…";
-      window.floricultura.demonstracao(true);
+      window.operatto.demonstracao(true);
     });
     $("[data-entrar-demo]")?.addEventListener("click", async (e) => {
       e.target.disabled = true;
@@ -174,7 +174,7 @@
         e.target.disabled = false;
       }
     });
-    $("[data-sair-demo]")?.addEventListener("click", () => window.floricultura.demonstracao(false));
+    $("[data-sair-demo]")?.addEventListener("click", () => window.operatto.demonstracao(false));
   }
 
   function telaEntrada(demonstracao = FA.estado.demonstracao) {
@@ -183,10 +183,10 @@
         <h2>Demonstração</h2>
         <p class="sutil centro">Uma floricultura fictícia com seis meses de vendas, encomendas, estoque, financeiro e entregas, para conhecer o sistema à vontade.</p>
         <button class="btn primario grande largo" data-entrar-demo>Entrar na demonstração</button>
-        ${window.floricultura ? '<button class="btn largo" data-sair-demo>Voltar para os dados da loja</button>' : ""}
+        ${window.operatto ? '<button class="btn largo" data-sair-demo>Voltar para os dados da loja</button>' : ""}
       </div>` : `
       <form class="entrada-form" novalidate>
-        <label>Usuário<input name="usuario" autocomplete="username" autocapitalize="none" spellcheck="false" required/></label>
+        <label>Nome e sobrenome<input name="nome" autocomplete="username" autocapitalize="words" spellcheck="false" placeholder="ex.: Ana Souza" required/></label>
         <label>Senha<input name="senha" type="password" autocomplete="current-password" required/></label>
         <p class="erro" role="alert"></p>
         <button class="btn primario grande largo" type="submit">Entrar</button>
@@ -196,18 +196,18 @@
     ligarBotoesDemo();
     const form = $("form.entrada-form");
     if (!form) return;
-    form.elements.usuario.focus();
+    form.elements.nome.focus();
     form.addEventListener("submit", async (evento) => {
       evento.preventDefault();
       const erro = $(".erro", form);
       erro.textContent = "";
-      const usuario = form.elements.usuario.value.trim();
+      const nome = form.elements.nome.value.trim();
       const senha = form.elements.senha.value;
-      if (!usuario || !senha) return (erro.textContent = "Informe usuário e senha.");
+      if (!nome || !senha) return (erro.textContent = "Informe o nome e a senha.");
       const botao = $("button", form);
       botao.disabled = true;
       try {
-        const { token } = await api("POST", "/api/login", { usuario, senha });
+        const { token } = await api("POST", "/api/login", { nome, senha });
         guardarToken(token);
         await iniciarSessao();
       } catch (problema) {
@@ -225,11 +225,10 @@
       <form class="entrada-form" novalidate>
         <h2>Primeiro acesso</h2>
         <p class="sutil">Crie o usuário de quem administra o sistema. Não existe senha de fábrica: só quem souber esta senha poderá entrar.</p>
-        <label>Nome da floricultura<input name="loja" value="Floricultura Exemplo" maxlength="80"/></label>
-        <label>Seu nome completo<input name="nome" maxlength="120" required/></label>
-        <label>Usuário para entrar<input name="usuario" autocapitalize="none" spellcheck="false" maxlength="40" placeholder="ex.: dayane" required/><small>Letras sem acento, números, ponto ou hífen.</small></label>
-        <label>Senha<input name="senha" type="password" autocomplete="new-password" required/><small>Pelo menos 8 caracteres, com letras e números.</small></label>
-        <label>Repita a senha<input name="repetir" type="password" autocomplete="new-password" required/></label>
+        <label>Nome da floricultura<input name="loja" placeholder="ex.: Flores da Praça" maxlength="80"/></label>
+        <label>Seu nome e sobrenome<input name="nome" maxlength="120" autocomplete="name" placeholder="ex.: Maria Oliveira" required/><small>É com o nome e o sobrenome que você vai entrar no sistema.</small></label>
+        <label>Senha<input name="senha" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="new-password" required/><small>De 6 a 8 números.</small></label>
+        <label>Repita a senha<input name="repetir" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="new-password" required/></label>
         <p class="erro" role="alert"></p>
         <button class="btn primario grande largo" type="submit">Criar acesso e entrar</button>
         ${botaoVerDemo()}
@@ -244,8 +243,8 @@
       erro.textContent = "";
       if (form.elements.senha.value !== form.elements.repetir.value) return (erro.textContent = "As duas senhas não são iguais.");
       try {
-        await api("POST", "/api/configurar", { loja: v("loja"), nome: v("nome"), usuario: v("usuario"), senha: form.elements.senha.value });
-        const { token } = await api("POST", "/api/login", { usuario: v("usuario"), senha: form.elements.senha.value });
+        await api("POST", "/api/configurar", { loja: v("loja"), nome: v("nome"), senha: form.elements.senha.value });
+        const { token } = await api("POST", "/api/login", { nome: v("nome"), senha: form.elements.senha.value });
         guardarToken(token);
         await iniciarSessao();
         aviso("Tudo pronto! Comece cadastrando os produtos no Catálogo.");

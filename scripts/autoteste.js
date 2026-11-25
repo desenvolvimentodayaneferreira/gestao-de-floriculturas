@@ -1,6 +1,6 @@
-// Autoteste do programa: abre o Gestão de Floriculturas com dados temporários (primeiro acesso), confere servidor, banco e tela, e fecha.
+// Autoteste do programa: abre o sistema com dados temporários (primeiro acesso), confere servidor, banco e tela, e fecha.
 // Uso: npm run autoteste                                  (código-fonte)
-//      npm run autoteste -- "caminho\Gestão de Floriculturas.exe"  (programa instalado)
+//      npm run autoteste -- "caminho\Sistema de Gestão para Floriculturas.exe"  (programa instalado)
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
@@ -8,8 +8,8 @@ const path = require("node:path");
 
 const raiz = path.join(__dirname, "..");
 const alvo = process.argv[2];
-fs.rmSync(path.join(os.tmpdir(), "floricultura-autoteste"), { recursive: true, force: true });
-const env = { ...process.env, FLORICULTURA_AUTOTESTE: "1" };
+fs.rmSync(path.join(os.tmpdir(), "operatto-autoteste"), { recursive: true, force: true });
+const env = { ...process.env, OPERATTO_AUTOTESTE: "1" };
 delete env.ELECTRON_RUN_AS_NODE;
 const filho = spawn(alvo || require("electron"), alvo ? [] : [raiz], { cwd: raiz, env });
 let saida = "";

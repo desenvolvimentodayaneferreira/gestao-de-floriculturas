@@ -302,7 +302,7 @@ function abrir(arquivo) {
 }
 
 // Confere se um arquivo é um banco do sistema (usado antes de restaurar uma cópia).
-function ehBancoFloricultura(arquivo) {
+function ehBancoOperatto(arquivo) {
   let db;
   try {
     db = new DatabaseSync(arquivo, { readOnly: true });
@@ -316,4 +316,4 @@ function ehBancoFloricultura(arquivo) {
   }
 }
 
-module.exports = { abrir, ehBancoFloricultura, VERSAO_BANCO: MIGRACOES.length };
+module.exports = { abrir, ehBancoOperatto, VERSAO_BANCO: MIGRACOES.length };

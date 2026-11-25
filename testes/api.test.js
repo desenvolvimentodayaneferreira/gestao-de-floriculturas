@@ -13,7 +13,7 @@ let base;
 let pasta;
 const tokens = {};
 const ids = {};
-const SENHA = "Flores2026";
+const SENHA = "20261111";
 
 async function api(metodo, caminho, corpo, quem) {
   const resposta = await fetch(base + caminho, {
@@ -31,7 +31,7 @@ const ok = async (...args) => {
 const produto = async (id) => ok("GET", `/api/produtos/${id}`, null, "admin");
 
 test.before(async () => {
-  pasta = fs.mkdtempSync(path.join(os.tmpdir(), "floricultura-teste-"));
+  pasta = fs.mkdtempSync(path.join(os.tmpdir(), "operatto-teste-"));
   app = iniciarServidor({ pastaDados: pasta, porta: 0 });
   base = `http://127.0.0.1:${await app.pronto}`;
 });
@@ -46,17 +46,19 @@ test("CPF: confere os dígitos verificadores", () => {
 
 test("primeiro acesso cria o administrador (sem senha de fábrica)", async () => {
   assert.equal((await ok("GET", "/api/estado")).configurado, false);
-  assert.equal((await api("POST", "/api/login", { usuario: "admin", senha: "Floricultura@123" })).status, 401, "a senha antiga de fábrica não existe mais");
-  assert.equal((await api("POST", "/api/configurar", { loja: "Floricultura Exemplo", nome: "Dayane", usuario: "dayane", senha: "123" })).status, 400, "senha fraca");
-  assert.equal((await api("POST", "/api/configurar", { loja: "Floricultura Exemplo", nome: "Dayane", usuario: "dayane", senha: "somenteletras" })).status, 400, "senha sem números");
-  await ok("POST", "/api/configurar", { loja: "Floricultura Exemplo", nome: "Dayane Ferreira", usuario: "Dayane", senha: SENHA });
-  assert.equal((await api("POST", "/api/configurar", { loja: "X", nome: "Y", usuario: "outro", senha: SENHA })).status, 409);
+  assert.equal((await api("POST", "/api/login", { usuario: "admin", senha: "Operatto@123" })).status, 401, "a senha antiga de fábrica não existe mais");
+  assert.equal((await api("POST", "/api/configurar", { loja: "Flores da Praça", nome: "Marta Lima", senha: "12345" })).status, 400, "senha curta");
+  assert.equal((await api("POST", "/api/configurar", { loja: "Flores da Praça", nome: "Marta Lima", senha: "123456789" })).status, 400, "senha longa");
+  assert.equal((await api("POST", "/api/configurar", { loja: "Flores da Praça", nome: "Marta Lima", senha: "abc123" })).status, 400, "senha só de números");
+  assert.equal((await api("POST", "/api/configurar", { loja: "Flores da Praça", nome: "Marta", senha: SENHA })).status, 400, "sem sobrenome");
+  await ok("POST", "/api/configurar", { loja: "Flores da Praça", nome: "Marta Lima", senha: SENHA });
+  assert.equal((await api("POST", "/api/configurar", { loja: "X", nome: "Y Z", senha: SENHA })).status, 409);
   assert.equal((await ok("GET", "/api/estado")).configurado, true);
 
-  const errado = await api("POST", "/api/login", { usuario: "dayane", senha: "Errada123" });
+  const errado = await api("POST", "/api/login", { nome: "Marta Lima", senha: "11112222" });
   assert.equal(errado.status, 401);
   assert.match(errado.dados.erro, /Restam 4/);
-  tokens.admin = (await ok("POST", "/api/login", { usuario: "DAYANE", senha: SENHA })).token;
+  tokens.admin = (await ok("POST", "/api/login", { nome: "  MARTA   lima ", senha: SENHA })).token;
   const eu = await ok("GET", "/api/eu", null, "admin");
   assert.equal(eu.perfil, "Direção");
   assert.ok(eu.permissoes.includes("perfis.gerenciar"));
@@ -81,27 +83,27 @@ test("usuários, perfis e permissões", async () => {
   ids.perfilAtendimento = perfis.find((p) => p.nome === "Atendimento").id;
   ids.perfilDirecao = perfis.find((p) => p.nome === "Direção").id;
 
-  ids.ana = (await ok("POST", "/api/usuarios", { nome: "Ana Atendente", usuario: "ana", senha: "Balcao2026", setor: "Loja", perfil_id: ids.perfilAtendimento }, "admin")).id;
-  assert.equal((await api("POST", "/api/usuarios", { nome: "Outra", usuario: "ANA", senha: "Balcao2026", perfil_id: ids.perfilAtendimento }, "admin")).status, 409);
-  tokens.ana = (await ok("POST", "/api/login", { usuario: "ana", senha: "Balcao2026" })).token;
+  ids.ana = (await ok("POST", "/api/usuarios", { nome: "Ana Atendente", senha: "202612", setor: "Loja", perfil_id: ids.perfilAtendimento }, "admin")).id;
+  assert.equal((await api("POST", "/api/usuarios", { nome: "ANA atendente", senha: "202612", perfil_id: ids.perfilAtendimento }, "admin")).status, 409);
+  tokens.ana = (await ok("POST", "/api/login", { nome: "Ana Atendente", senha: "202612" })).token;
   assert.equal((await api("GET", "/api/usuarios", null, "ana")).status, 403, "atendimento não gerencia usuários");
   assert.equal((await api("POST", "/api/produtos", { nome: "X", sku: "X1" }, "ana")).status, 403, "atendimento não edita catálogo");
 
-  const admin = (await ok("GET", "/api/usuarios", null, "admin")).find((u) => u.usuario === "dayane");
+  const admin = (await ok("GET", "/api/usuarios", null, "admin")).find((u) => u.nome === "Marta Lima");
   assert.equal((await api("PUT", `/api/usuarios/${admin.id}`, { ativo: false }, "admin")).status, 400, "não desativa o único administrador");
   assert.equal((await api("PUT", `/api/perfis/${ids.perfilDirecao}`, { nome: "Direção", permissoes: ["painel.ver"] }, "admin")).status, 400, "não tira o acesso do único administrador");
   assert.equal((await api("DELETE", `/api/perfis/${ids.perfilAtendimento}`, null, "admin")).status, 400, "perfil em uso");
 });
 
 test("bloqueio após 5 senhas erradas e troca de senha", async () => {
-  const id = (await ok("POST", "/api/usuarios", { nome: "Temp", usuario: "temp", senha: "Temporaria1", perfil_id: ids.perfilAtendimento }, "admin")).id;
-  for (let i = 0; i < 5; i++) await api("POST", "/api/login", { usuario: "temp", senha: "Errada0000" });
-  assert.equal((await api("POST", "/api/login", { usuario: "temp", senha: "Temporaria1" })).status, 423, "bloqueado mesmo com a senha certa");
+  const id = (await ok("POST", "/api/usuarios", { nome: "Temp Teste", senha: "135790", perfil_id: ids.perfilAtendimento }, "admin")).id;
+  for (let i = 0; i < 5; i++) await api("POST", "/api/login", { nome: "Temp Teste", senha: "000000" });
+  assert.equal((await api("POST", "/api/login", { nome: "Temp Teste", senha: "135790" })).status, 423, "bloqueado mesmo com a senha certa");
   await ok("PUT", `/api/usuarios/${id}`, { desbloquear: true }, "admin");
-  tokens.temp = (await ok("POST", "/api/login", { usuario: "temp", senha: "Temporaria1" })).token;
-  assert.equal((await api("PUT", "/api/eu/senha", { atual: "errada", nova: "NovaSenha22" }, "temp")).status, 400);
-  await ok("PUT", "/api/eu/senha", { atual: "Temporaria1", nova: "NovaSenha22" }, "temp");
-  await ok("POST", "/api/login", { usuario: "temp", senha: "NovaSenha22" });
+  tokens.temp = (await ok("POST", "/api/login", { nome: "Temp Teste", senha: "135790" })).token;
+  assert.equal((await api("PUT", "/api/eu/senha", { atual: "999999", nova: "24682468" }, "temp")).status, 400);
+  await ok("PUT", "/api/eu/senha", { atual: "135790", nova: "24682468" }, "temp");
+  await ok("POST", "/api/login", { nome: "Temp Teste", senha: "24682468" });
   await ok("PUT", `/api/usuarios/${id}`, { ativo: false }, "admin");
   assert.equal((await api("GET", "/api/eu", null, "temp")).status, 401, "desativado perde a sessão");
 });

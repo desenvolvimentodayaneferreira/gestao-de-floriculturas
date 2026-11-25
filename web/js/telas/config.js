@@ -3,7 +3,7 @@
 // Configurações: dados da loja, regra do CPF, cópias de segurança e registro de ações.
 (() => {
   const { $, esc, api, aviso, dataHora, tabela, normalizar } = FA;
-  const desktop = window.floricultura; // presente só no programa instalado (Electron)
+  const desktop = window.operatto; // presente só no programa instalado (Electron)
 
   async function abrir(area) {
     const [sistema, copias, acoes] = await Promise.all([api("GET", "/api/sistema"), api("GET", "/api/copias"), api("GET", "/api/auditoria?limite=500")]);
@@ -29,7 +29,7 @@
         <div class="cartao-topo"><div><h3>Registro de ações</h3><small>Quem fez o quê: vendas, cancelamentos, preços, usuários, estoque.</small></div><input name="filtro" placeholder="Filtrar" style="max-width:260px" autocomplete="off"/></div>
         <div data-acoes></div>
       </section>
-      <p class="sutil centro">Gestão de Floriculturas versão ${esc(sistema.versao)} · tecnologia KAI — Kaelor Artificial Intelligence</p>`;
+      <p class="sutil centro">Sistema de Gestão para Floriculturas · versão ${esc(sistema.versao)} · <a href="/privacidade.html">Privacidade e segurança</a></p>`;
 
     const desenharAcoes = () => {
       const termo = normalizar($('[name="filtro"]', area).value);

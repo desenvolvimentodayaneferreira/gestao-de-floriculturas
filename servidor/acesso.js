@@ -32,7 +32,6 @@ const CATEGORIAS_PADRAO = ["Buquês", "Coroas", "Arranjos", "Solitárias", "Flor
 const MAX_TENTATIVAS = 5;
 const BLOQUEIO_MS = 5 * 60 * 1000;
 const SESSAO_MS = 12 * 60 * 60 * 1000; // sem uso por 12 horas, pede a senha de novo
-const SENHA_MIN = 8;
 
 function hashSenha(senha, sal = crypto.randomBytes(16).toString("hex")) {
   return { sal, hash: crypto.scryptSync(String(senha), sal, 64).toString("hex") };
@@ -41,17 +40,19 @@ function conferirSenha(senha, usuario) {
   const { hash } = hashSenha(senha, usuario.senha_sal);
   return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(usuario.senha_hash, "hex"));
 }
+// Senha só de números, de 6 a 8 dígitos
 function validarSenha(senha) {
   const s = String(senha || "");
-  exigir(s.length >= SENHA_MIN, `A senha deve ter pelo menos ${SENHA_MIN} caracteres.`);
-  exigir(s.length <= 200, "Senha longa demais.");
-  exigir(/[A-Za-zÀ-ÿ]/.test(s) && /\d/.test(s), "A senha deve ter letras e números.");
+  exigir(/^\d{6,8}$/.test(s), "A senha deve ter de 6 a 8 números.");
   return s;
 }
-function validarUsuario(valor) {
-  const u = texto(valor, 40).toLowerCase();
-  exigir(/^[a-z0-9._-]{3,40}$/.test(u), "O usuário deve ter de 3 a 40 letras sem acento, números, ponto, hífen ou sublinhado.");
-  return u;
+// Para entrar, a pessoa digita o nome e o sobrenome. Guardamos a forma normalizada
+// (sem acento, minúsculas e espaços simples) na coluna "usuario".
+const normalizarNome = (nome) => String(nome || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim().slice(0, 120);
+function validarNomeCompleto(valor) {
+  const nome = texto(valor, 120);
+  exigir(normalizarNome(nome).split(" ").length >= 2, "Informe o nome e o sobrenome. Eles são usados para entrar no sistema.");
+  return nome;
 }
 const lerPermissoes = (json) => {
   try {
@@ -73,7 +74,19 @@ function prepararBase(banco) {
   }
 }
 
+// Cadastros antigos (usuário tipo "maria"): passam a entrar pelo nome e sobrenome, quando não houver conflito.
+function migrarLoginPorNome(banco) {
+  const todos = banco.todos("select id, usuario, nome from usuarios");
+  for (const u of todos) {
+    const alvo = normalizarNome(u.nome);
+    if (alvo.split(" ").length < 2 || u.usuario === alvo) continue;
+    if (todos.some((o) => o.id !== u.id && (o.usuario === alvo))) continue;
+    banco.exec("update usuarios set usuario = ? where id = ?", alvo, u.id);
+  }
+}
+
 function criarAcesso(banco) {
+  migrarLoginPorNome(banco);
   // Precisa sobrar alguém que consiga administrar usuários e perfis.
   function garantirAdministrador(excetoUsuarioId, perfisAlterados = {}) {
     const usuarios = banco.todos("select u.id, u.perfil_id, p.permissoes from usuarios u join perfis p on p.id = u.perfil_id where u.ativo = 1");
@@ -110,7 +123,7 @@ function criarAcesso(banco) {
   function rotas(rota) {
     rota("GET", "/api/estado", { publica: true }, () => ({
       configurado: Boolean(banco.um("select 1 from usuarios")),
-      loja: banco.config("loja", { nome: "Floricultura Exemplo" }),
+      loja: banco.config("loja", { nome: "Minha floricultura" }),
       demonstracao: Boolean(banco.config("demonstracao")),
     }));
 
@@ -125,10 +138,9 @@ function criarAcesso(banco) {
     // Primeiro acesso: cria o administrador. Não existe usuário nem senha de fábrica.
     rota("POST", "/api/configurar", { publica: true }, ({ corpo }) => {
       exigir(!banco.um("select 1 from usuarios"), "O sistema já foi configurado.", 409);
-      const loja = texto(corpo.loja, 80) || "Floricultura Exemplo";
-      const nome = texto(corpo.nome, 120);
-      exigir(nome, "Informe o seu nome.");
-      const usuario = validarUsuario(corpo.usuario);
+      const loja = texto(corpo.loja, 80) || "Minha floricultura";
+      const nome = validarNomeCompleto(corpo.nome);
+      const usuario = normalizarNome(nome);
       const { hash, sal } = hashSenha(validarSenha(corpo.senha));
       banco.transacao(() => {
         banco.salvarConfig("loja", { nome: loja });
@@ -140,8 +152,8 @@ function criarAcesso(banco) {
     });
 
     rota("POST", "/api/login", { publica: true }, ({ corpo }) => {
-      const mensagemErro = "Usuário ou senha incorretos.";
-      const usuario = banco.um("select * from usuarios where usuario = ?", texto(corpo.usuario, 40).toLowerCase());
+      const mensagemErro = "Nome ou senha incorretos.";
+      const usuario = banco.um("select * from usuarios where usuario = ?", normalizarNome(corpo.nome ?? corpo.usuario));
       if (!usuario || !usuario.ativo) {
         hashSenha(String(corpo.senha || "")); // mesmo tempo de resposta, para não revelar se o usuário existe
         throw new ErroHttp(401, mensagemErro);
@@ -179,10 +191,9 @@ function criarAcesso(banco) {
         from usuarios u join perfis p on p.id = u.perfil_id order by u.ativo desc, u.nome`, Date.now()));
 
     rota("POST", "/api/usuarios", { perm: "usuarios.gerenciar" }, ({ corpo, sessao }) => {
-      const nome = texto(corpo.nome, 120);
-      exigir(nome, "Informe o nome completo.");
-      const usuario = validarUsuario(corpo.usuario);
-      exigir(!banco.um("select 1 from usuarios where usuario = ?", usuario), "Esse nome de usuário já existe.", 409);
+      const nome = validarNomeCompleto(corpo.nome);
+      const usuario = normalizarNome(nome);
+      exigir(!banco.um("select 1 from usuarios where usuario = ?", usuario), "Já existe alguém com esse nome. Use outro sobrenome ou um nome do meio.", 409);
       const perfil = banco.um("select * from perfis where id = ?", Number(corpo.perfil_id));
       exigir(perfil, "Escolha o perfil de acesso.");
       exigir(sessao.permissoes.includes("perfis.gerenciar") || lerPermissoes(perfil.permissoes).every((p) => sessao.permissoes.includes(p)),
@@ -190,7 +201,7 @@ function criarAcesso(banco) {
       const { hash, sal } = hashSenha(validarSenha(corpo.senha));
       const r = banco.exec("insert into usuarios (usuario, nome, setor, perfil_id, senha_hash, senha_sal, criado_em) values (?, ?, ?, ?, ?, ?, ?)",
         usuario, nome, texto(corpo.setor, 80), perfil.id, hash, sal, Date.now());
-      registrar(banco, sessao, "Cadastro de usuário", `${usuario} (${perfil.nome})`);
+      registrar(banco, sessao, "Cadastro de usuário", `${nome} (${perfil.nome})`);
       return { id: Number(r.lastInsertRowid) };
     });
 
@@ -205,10 +216,14 @@ function criarAcesso(banco) {
           "Você não pode dar a outra pessoa um acesso maior que o seu.", 403);
       }
       const ativo = corpo.ativo === undefined ? usuario.ativo : corpo.ativo ? 1 : 0;
+      const novoNome = texto(corpo.nome, 120) ? validarNomeCompleto(corpo.nome) : usuario.nome;
+      const novoLogin = normalizarNome(novoNome);
+      exigir(!banco.um("select 1 from usuarios where usuario = ? and id <> ?", novoLogin, usuario.id), "Já existe alguém com esse nome. Use outro sobrenome ou um nome do meio.", 409);
+      if (corpo.senha) validarSenha(corpo.senha);
       if (!ativo || perfilId !== usuario.perfil_id) garantirAdministradorApos(usuario.id, perfilId, ativo);
       banco.transacao(() => {
-        banco.exec("update usuarios set nome = ?, setor = ?, perfil_id = ?, ativo = ? where id = ?",
-          texto(corpo.nome, 120) || usuario.nome, corpo.setor === undefined ? usuario.setor : texto(corpo.setor, 80), perfilId, ativo, usuario.id);
+        banco.exec("update usuarios set nome = ?, usuario = ?, setor = ?, perfil_id = ?, ativo = ? where id = ?",
+          novoNome, novoLogin, corpo.setor === undefined ? usuario.setor : texto(corpo.setor, 80), perfilId, ativo, usuario.id);
         if (corpo.senha) {
           const { hash, sal } = hashSenha(validarSenha(corpo.senha));
           banco.exec("update usuarios set senha_hash = ?, senha_sal = ?, tentativas = 0, bloqueado_ate = null where id = ?", hash, sal, usuario.id);
@@ -216,7 +231,7 @@ function criarAcesso(banco) {
         if (corpo.desbloquear) banco.exec("update usuarios set tentativas = 0, bloqueado_ate = null where id = ?", usuario.id);
         if (!ativo || corpo.senha) banco.exec("delete from sessoes where usuario_id = ?", usuario.id);
       });
-      registrar(banco, sessao, "Alteração de usuário", `${usuario.usuario}${corpo.senha ? " (nova senha)" : ""}${!ativo ? " (desativado)" : ""}`);
+      registrar(banco, sessao, "Alteração de usuário", `${novoNome}${corpo.senha ? " (nova senha)" : ""}${!ativo ? " (desativado)" : ""}`);
     });
 
     // Confere a regra do administrador simulando a alteração.

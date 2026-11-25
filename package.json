@@ -1,9 +1,9 @@
 {
-  "name": "gestao-de-floriculturas",
-  "productName": "Gestão de Floriculturas",
+  "name": "operatto-floricultura",
+  "productName": "Sistema de Gestão para Floriculturas",
   "version": "2.0.0",
-  "description": "Gestão de Floriculturas by KAI - sistema da floricultura (vendas, encomendas, estoque, fichas técnicas e frota)",
-  "author": "Dayane Ferreira (KAI)",
+  "description": "Sistema de Gestão para Floriculturas: vendas, encomendas, estoque, fichas técnicas e frota",
+  "author": "Esmerarse",
   "private": true,
   "main": "electron/main.js",
   "scripts": {
@@ -13,12 +13,13 @@
     "check": "node scripts/check.js",
     "test": "node --test testes/*.test.js",
     "autoteste": "node scripts/autoteste.js",
+    "icone": "electron build/gerar-icone.js",
     "instalador": "npm run check && npm test && electron-builder --win nsis"
   },
   "build": {
-    "appId": "br.com.kai.floriculturas",
-    "productName": "Gestão de Floriculturas",
-    "copyright": "Gestão de Floriculturas é uma tecnologia da KAI — Kaelor Artificial Intelligence",
+    "appId": "br.com.esmerarse.operatto.floricultura",
+    "productName": "Sistema de Gestão para Floriculturas",
+    "copyright": "Sistema de Gestão para Floriculturas. Desenvolvido pela Esmerarse",
     "directories": {
       "output": "instalador",
       "buildResources": "build"
@@ -48,13 +49,13 @@
       "multiLanguageInstaller": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Gestão de Floriculturas",
+      "shortcutName": "Sistema de Gestão para Floriculturas",
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false,
-      "artifactName": "Gestao-Floriculturas-Instalador-${version}.${ext}",
+      "artifactName": "Floricultura-Instalador-${version}.${ext}",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
-      "uninstallDisplayName": "Gestão de Floriculturas"
+      "uninstallDisplayName": "Sistema de Gestão para Floriculturas"
     }
   },
   "devDependencies": {

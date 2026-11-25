@@ -72,7 +72,7 @@ function criarServidor({ pastaWeb, autenticar }) {
       res.writeHead(403);
       return res.end();
     }
-    const url = new URL(req.url, "http://floricultura");
+    const url = new URL(req.url, "http://operatto");
     res.setHeader("X-Frame-Options", "DENY");
     res.setHeader("Referrer-Policy", "no-referrer");
     if (!url.pathname.startsWith("/api/")) return arquivoEstatico(res, url.pathname);

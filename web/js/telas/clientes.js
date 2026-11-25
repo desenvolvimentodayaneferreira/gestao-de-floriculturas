@@ -18,6 +18,7 @@
   function novoCliente(depois) {
     formulario({
       titulo: "Novo cliente",
+      intro: "Peça a autorização do cliente para guardar os dados. Eles ficam só neste computador e servem para atender pedidos, entregas e o histórico de compras.",
       campos: campos(),
       botao: "Cadastrar cliente",
       salvar: async (d) => {

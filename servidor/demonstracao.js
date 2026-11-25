@@ -6,7 +6,7 @@ const { ilustracao } = require("./ilustracoes");
 
 const doisDigitos = (n) => String(n).padStart(2, "0");
 
-async function preencherDemonstracao({ base, banco, usuario = "demonstracao", senha = `Demo${crypto.randomBytes(9).toString("hex")}`, progresso = () => {} }) {
+async function preencherDemonstracao({ base, banco, nome = "Equipe Flores da Praça", senha = String(crypto.randomInt(10000000, 99999999)), progresso = () => {} }) {
   let token = null;
   const api = async (metodo, caminho, corpo) => {
     const r = await fetch(base + caminho, { method: metodo, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined });
@@ -19,11 +19,11 @@ async function preencherDemonstracao({ base, banco, usuario = "demonstracao", se
   const sorteio = () => ((semente = (semente * 16807) % 2147483647) / 2147483647);
   const um = (lista) => lista[Math.floor(sorteio() * lista.length)];
 
-  await api("POST", "/api/configurar", { loja: "Floricultura Exemplo", nome: "Equipe Demonstração", usuario, senha });
-  token = (await api("POST", "/api/login", { usuario, senha })).token;
+  await api("POST", "/api/configurar", { loja: "Flores da Praça (demonstração)", nome, senha });
+  token = (await api("POST", "/api/login", { nome, senha })).token;
   const perfis = await api("GET", "/api/perfis");
-  await api("POST", "/api/usuarios", { nome: "Ana Paula Rocha", usuario: "ana", setor: "Atendimento", senha: `Ana${crypto.randomBytes(6).toString("hex")}1`, perfil_id: perfis.find((p) => p.nome === "Atendimento").id });
-  await api("POST", "/api/usuarios", { nome: "Roberto Alves", usuario: "roberto", setor: "Entregas", senha: `Rob${crypto.randomBytes(6).toString("hex")}1`, perfil_id: perfis.find((p) => p.nome === "Colaborador").id });
+  await api("POST", "/api/usuarios", { nome: "Ana Paula Rocha", setor: "Atendimento", senha: String(crypto.randomInt(100000, 99999999)), perfil_id: perfis.find((p) => p.nome === "Atendimento").id });
+  await api("POST", "/api/usuarios", { nome: "Roberto Alves", setor: "Entregas", senha: String(crypto.randomInt(100000, 99999999)), perfil_id: perfis.find((p) => p.nome === "Colaborador").id });
 
   // ---------- Catálogo ----------
   const cats = Object.fromEntries((await api("GET", "/api/categorias")).map((c) => [c.nome, c.id]));
@@ -214,7 +214,7 @@ async function preencherDemonstracao({ base, banco, usuario = "demonstracao", se
   }
 
   banco.salvarConfig("demonstracao", { criada_em: hoje });
-  return { usuario };
+  return { nome };
 }
 
 module.exports = { preencherDemonstracao };

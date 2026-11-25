@@ -4,7 +4,7 @@
 const FA = window.FA = { telas: {}, estado: { usuario: null, sistema: null } };
 
 (() => {
-  const TOKEN = "floricultura:token";
+  const TOKEN = "operatto:token";
   const $ = (seletor, raiz = document) => raiz.querySelector(seletor);
   const $$ = (seletor, raiz = document) => [...raiz.querySelectorAll(seletor)];
   const esc = (texto) => String(texto ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -205,7 +205,7 @@ const FA = window.FA = { telas: {}, estado: { usuario: null, sistema: null } };
     if (c.tipo === "textarea") return `<label class="${largo}" for="${id}">${esc(c.rotulo)}<textarea id="${id}" name="${c.nome}" rows="3" maxlength="${c.max || 500}" placeholder="${esc(c.placeholder || "")}">${esc(valor ?? "")}</textarea>${ajuda}</label>`;
     const tipos = { dinheiro: "text", quantidade: "text", numero: "text", data: "date", datahora: "datetime-local", senha: "password", cpf: "text", telefone: "tel", email: "email" };
     const tipo = tipos[c.tipo] || "text";
-    const modo = { dinheiro: "decimal", quantidade: "decimal", numero: "decimal", cpf: "numeric" }[c.tipo];
+    const modo = { dinheiro: "decimal", quantidade: "decimal", numero: "decimal", cpf: "numeric", senha: "numeric" }[c.tipo];
     let texto = valor ?? c.padrao ?? "";
     if (c.tipo === "dinheiro" && valor !== undefined && valor !== null) texto = paraCampo(valor);
     if (c.tipo === "quantidade" && valor !== undefined && valor !== null) texto = String(valor).replace(".", ",");
@@ -214,8 +214,8 @@ const FA = window.FA = { telas: {}, estado: { usuario: null, sistema: null } };
       modo ? `inputmode="${modo}"` : "",
       c.tipo === "cpf" ? 'data-mascara="cpf" maxlength="14"' : "",
       c.tipo === "telefone" ? 'data-mascara="telefone" maxlength="16"' : "",
-      c.tipo === "senha" ? 'autocomplete="new-password"' : 'autocomplete="off"',
-      c.max ? `maxlength="${c.max}"` : "",
+      c.tipo === "senha" ? 'autocomplete="new-password" pattern="[0-9]*" maxlength="8"' : 'autocomplete="off"',
+      c.max && c.tipo !== "senha" ? `maxlength="${c.max}"` : "",
       c.lista ? `list="${id}-lista"` : "",
     ].join(" ");
     const lista = c.lista ? `<datalist id="${id}-lista">${c.lista.map((o) => `<option value="${esc(o)}"></option>`).join("")}</datalist>` : "";

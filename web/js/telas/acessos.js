@@ -17,7 +17,6 @@
         <div class="cartao-topo"><h3>Usuários</h3><button class="btn primario" data-novo>+ Novo usuário</button></div>
         ${tabela([
           { titulo: "Nome", valor: (u) => `<b>${esc(u.nome)}</b>${u.id === eu.id ? ' <span class="etiqueta rosa">você</span>' : ""}` },
-          { titulo: "Usuário", valor: (u) => esc(u.usuario) },
           { titulo: "Setor", valor: (u) => esc(u.setor || "—") },
           { titulo: "Perfil", valor: (u) => esc(u.perfil) },
           { titulo: "Situação", valor: (u) => (!u.ativo ? '<span class="etiqueta">Desativado</span>' : u.bloqueado ? '<span class="etiqueta perigo">Bloqueado</span>' : '<span class="etiqueta ok">Ativo</span>') },
@@ -41,11 +40,10 @@
         titulo: "Novo usuário",
         intro: "Combine a senha inicial com a pessoa. Ela pode trocar depois em “Minha senha”.",
         campos: [
-          { nome: "nome", rotulo: "Nome completo", obrigatorio: true, largo: true, max: 120 },
-          { nome: "usuario", rotulo: "Usuário para entrar", obrigatorio: true, max: 40, placeholder: "ex.: ana" },
+          { nome: "nome", rotulo: "Nome e sobrenome (usado para entrar)", obrigatorio: true, largo: true, max: 120, placeholder: "ex.: Ana Souza" },
           { nome: "setor", rotulo: "Setor", max: 80, lista: ["Loja", "Atendimento", "Produção", "Entregas", "Administrativo", "Direção"] },
           { nome: "perfil_id", rotulo: "Perfil de acesso", tipo: "select", obrigatorio: true, opcoes: perfis.map((p) => ({ valor: p.id, rotulo: p.nome })) },
-          { nome: "senha", rotulo: "Senha inicial", tipo: "senha", obrigatorio: true, ajuda: "8 ou mais caracteres, com letras e números." },
+          { nome: "senha", rotulo: "Senha inicial", tipo: "senha", obrigatorio: true, ajuda: "De 6 a 8 números." },
         ],
         botao: "Liberar acesso",
         salvar: async (d) => {
@@ -64,11 +62,11 @@
 
   function editarUsuario(u, perfis, depois) {
     const dialogo = formulario({
-      titulo: `${u.nome} (${u.usuario})`,
+      titulo: u.nome,
       intro: u.bloqueado ? "<b>Este usuário está bloqueado por erros de senha.</b> Marque “Desbloquear” para liberar agora." : "",
       valores: { ...u, ativo: Boolean(u.ativo) },
       campos: [
-        { nome: "nome", rotulo: "Nome completo", obrigatorio: true, largo: true, max: 120 },
+        { nome: "nome", rotulo: "Nome e sobrenome (usado para entrar)", obrigatorio: true, largo: true, max: 120 },
         { nome: "setor", rotulo: "Setor", max: 80 },
         { nome: "perfil_id", rotulo: "Perfil de acesso", tipo: "select", vazio: false, opcoes: perfis.map((p) => ({ valor: p.id, rotulo: p.nome })) },
         { nome: "senha", rotulo: "Nova senha (deixe em branco para manter)", tipo: "senha", largo: true },

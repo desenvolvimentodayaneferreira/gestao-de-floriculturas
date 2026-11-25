@@ -1,17 +1,19 @@
-// Programa Gestão de Floriculturas para Windows: liga o servidor local (só neste computador) e abre a janela.
-// Sem Docker, sem Python, sem internet: os dados ficam em %APPDATA%\Gestão de Floriculturas\dados.
+// Programa Sistema de Gestão para Floriculturas para Windows: liga o servidor local (só neste computador) e abre a janela.
+// Sem Docker, sem Python, sem internet: os dados ficam em %APPDATA%\Esmerarse - Operatto Floricultura\dados (nome interno mantido para não perder dados).
 const { app, BrowserWindow, dialog, shell, ipcMain, Menu, utilityProcess } = require("electron");
 const { DatabaseSync } = require("node:sqlite");
 const path = require("node:path");
 const fs = require("node:fs");
 const { iniciarServidor } = require("../servidor/app");
-const { ehBancoFloricultura } = require("../servidor/banco");
+const { ehBancoOperatto } = require("../servidor/banco");
 const { diaLocal } = require("../servidor/comum");
 
-const AUTOTESTE = process.env.FLORICULTURA_AUTOTESTE;
-const CAPTURAS = process.env.FLORICULTURA_CAPTURAS; // pasta onde salvar imagens das telas (desenvolvimento)
-if (AUTOTESTE) app.setPath("userData", path.join(app.getPath("temp"), "floricultura-autoteste"));
-else if (process.env.FLORICULTURA_USERDATA) app.setPath("userData", process.env.FLORICULTURA_USERDATA); // testes sem tocar nos dados reais
+const AUTOTESTE = process.env.OPERATTO_AUTOTESTE;
+const CAPTURAS = process.env.OPERATTO_CAPTURAS; // pasta onde salvar imagens das telas (desenvolvimento)
+if (AUTOTESTE) app.setPath("userData", path.join(app.getPath("temp"), "operatto-autoteste"));
+else if (process.env.OPERATTO_USERDATA) app.setPath("userData", process.env.OPERATTO_USERDATA); // testes sem tocar nos dados reais
+// Pasta de dados própria desta versão, para não misturar com outra versão do sistema (restaurante, frotas) no mesmo computador.
+else app.setPath("userData", path.join(app.getPath("appData"), "Esmerarse - Operatto Floricultura"));
 
 const PORTAS = [8686, 8687, 8688, 8689, 0];
 
@@ -22,7 +24,7 @@ function registrarErro(origem, detalhe) {
     if (fs.existsSync(arquivo) && fs.statSync(arquivo).size > 1024 * 1024) fs.renameSync(arquivo, `${arquivo}.antigo`);
     fs.appendFileSync(arquivo, `[${new Date().toLocaleString("pt-BR")}] ${origem}: ${detalhe}
 `);
-    if (process.env.FLORICULTURA_DEPURAR) console.log(`ERRO ${origem}: ${detalhe}`);
+    if (process.env.OPERATTO_DEPURAR) console.log(`ERRO ${origem}: ${detalhe}`);
   } catch { /* sem disco: ignora */ }
 }
 process.on("uncaughtException", (erro) => registrarErro("programa", erro.stack || erro.message));
@@ -41,9 +43,9 @@ function lerModo() {
     return {};
   }
 }
-let demonstracao = !AUTOTESTE && !process.env.FLORICULTURA_DADOS && Boolean(lerModo().demonstracao);
+let demonstracao = !AUTOTESTE && !process.env.OPERATTO_DADOS && Boolean(lerModo().demonstracao);
 const pastaDemonstracao = () => path.join(app.getPath("userData"), "demonstracao");
-const pastaDados = () => process.env.FLORICULTURA_DADOS || (demonstracao ? pastaDemonstracao() : path.join(app.getPath("userData"), "dados"));
+const pastaDados = () => process.env.OPERATTO_DADOS || (demonstracao ? pastaDemonstracao() : path.join(app.getPath("userData"), "dados"));
 
 async function ligarServidor() {
   for (const tentativa of PORTAS) {
@@ -66,8 +68,8 @@ function criarJanela() {
     minWidth: 1024,
     minHeight: 680,
     show: false,
-    title: "Gestão de Floriculturas",
-    backgroundColor: "#fdfcfe",
+    title: "Sistema de Gestão para Floriculturas",
+    backgroundColor: "#fffcfa",
     autoHideMenuBar: true,
     icon: path.join(__dirname, "..", "web", "assets", "icone.png"),
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, preload: path.join(__dirname, "preload.js") },
@@ -87,7 +89,7 @@ function criarJanela() {
   janela.webContents.on("render-process-gone", (_e, detalhes) => registrarErro("tela", `processo da tela parou: ${detalhes.reason}`));
   janela.on("unresponsive", () => registrarErro("tela", "a janela parou de responder"));
   janela.once("ready-to-show", () => {
-    if (process.env.FLORICULTURA_OCULTO) return; // testes automáticos
+    if (process.env.OPERATTO_OCULTO) return; // testes automáticos
     if (!AUTOTESTE && !CAPTURAS) janela.maximize();
     janela.show();
   });
@@ -96,7 +98,7 @@ function criarJanela() {
 function criarMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     {
-      label: "Gestão de Floriculturas",
+      label: "Sistema",
       submenu: [
         { label: "Recarregar", accelerator: "F5", click: () => janela?.webContents.reload() },
         { label: "Tela cheia", accelerator: "F11", click: () => janela?.setFullScreen(!janela.isFullScreen()) },
@@ -144,7 +146,7 @@ async function restaurarCopia() {
   });
   if (escolha.canceled || !escolha.filePaths[0]) return;
   const origem = escolha.filePaths[0];
-  if (!ehBancoFloricultura(origem)) {
+  if (!ehBancoOperatto(origem)) {
     dialog.showErrorBox("Arquivo inválido", "Este arquivo não é uma cópia de segurança do sistema.");
     return;
   }
@@ -155,10 +157,10 @@ async function restaurarCopia() {
     cancelId: 0,
     title: "Restaurar cópia",
     message: `Voltar os dados para a cópia “${path.basename(origem)}”?`,
-    detail: "Tudo o que foi registrado depois desta cópia deixa de aparecer. Antes de restaurar, o Gestão de Floriculturas guarda uma cópia do estado atual na mesma pasta, para você poder desfazer.",
+    detail: "Tudo o que foi registrado depois desta cópia deixa de aparecer. Antes de restaurar, o sistema guarda uma cópia do estado atual na mesma pasta, para você poder desfazer.",
   });
   if (confirmar !== 1) return;
-  const temporaria = path.join(app.getPath("temp"), `floricultura-restaurar-${Date.now()}.db`);
+  const temporaria = path.join(app.getPath("temp"), `operatto-restaurar-${Date.now()}.db`);
   try {
     fs.copyFileSync(origem, temporaria); // a origem pode estar dentro da pasta de cópias, que continua em uso
     const antes = servidor.copiarAgora();
@@ -180,9 +182,9 @@ async function restaurarCopia() {
 
 // Tela de espera (com barra de andamento quando a demonstração está sendo montada).
 const telaEspera = (texto, barra = false) => janela.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"></head>
-  <body style="margin:0;height:100vh;display:grid;place-items:center;background:#fdfcfe;font:18px 'Segoe UI',sans-serif;color:#3a2160">
-  <div style="text-align:center;width:420px"><div style="font:600 32px Georgia,serif;margin-bottom:12px">Gestão de Floriculturas</div>${texto}
-  ${barra ? '<div style="margin-top:22px;height:10px;border-radius:99px;background:#f6dcd6;overflow:hidden"><div id="progresso" style="height:100%;width:3%;border-radius:99px;background:linear-gradient(90deg,#552f80,#8a5fc0);transition:width .4s"></div></div><p style="font-size:13px;color:#6f6a78">Isso só acontece uma vez por dia.</p>' : ""}
+  <body style="margin:0;height:100vh;display:grid;place-items:center;background:#f4ede4;font:18px 'Segoe UI',sans-serif;color:#123028">
+  <div style="text-align:center;width:420px"><div style="font:600 32px Georgia,serif;margin-bottom:12px">Floricultura</div>${texto}
+  ${barra ? '<div style="margin-top:22px;height:10px;border-radius:99px;background:#e6dccd;overflow:hidden"><div id="progresso" style="height:100%;width:3%;border-radius:99px;background:#123028;transition:width .4s"></div></div><p style="font-size:13px;color:#5a6b63">Isso só acontece uma vez por dia.</p>' : ""}
   </div></body></html>`)}`);
 
 // Monta a demonstração num processo separado e numa pasta nova; só troca a antiga quando terminar.
@@ -258,7 +260,7 @@ async function trocarDemonstracao(ligar, { recriar = false } = {}) {
     await prepararDemonstracao(recriar);
     if (!servidor) await ligarServidor();
     criarMenu();
-    janela.setTitle(demonstracao ? "Gestão de Floriculturas — demonstração" : "Gestão de Floriculturas");
+    janela.setTitle(demonstracao ? "Sistema de Gestão para Floriculturas (demonstração)" : "Sistema de Gestão para Floriculturas");
     await janela.webContents.session.clearStorageData({ storages: ["localstorage"] });
     await janela.loadURL(`http://127.0.0.1:${porta}/`);
   } catch (erro) {
@@ -269,16 +271,16 @@ async function trocarDemonstracao(ligar, { recriar = false } = {}) {
 // Deixa a demonstração pronta (montada hoje) e liga o servidor nela. Chamar com o servidor desligado.
 async function prepararDemonstracao(recriar = false) {
   if (!demonstracao) return;
-  if (recriar || !demonstracaoDeHoje(path.join(pastaDemonstracao(), "floricultura.db"))) {
+  if (recriar || !demonstracaoDeHoje(path.join(pastaDemonstracao(), "operatto.db"))) {
     await telaEspera("Preparando a demonstração com as datas de hoje…", true);
     await montarDemonstracao(pastaDemonstracao());
   }
   await ligarServidor();
 }
 
-ipcMain.handle("floricultura:demonstracao", (_e, ligar) => trocarDemonstracao(Boolean(ligar)));
-ipcMain.handle("floricultura:abrir-pasta-copias", () => abrirPastaCopias());
-ipcMain.handle("floricultura:restaurar-copia", () => restaurarCopia());
+ipcMain.handle("operatto:demonstracao", (_e, ligar) => trocarDemonstracao(Boolean(ligar)));
+ipcMain.handle("operatto:abrir-pasta-copias", () => abrirPastaCopias());
+ipcMain.handle("operatto:restaurar-copia", () => restaurarCopia());
 
 async function iniciar() {
   criarMenu();
@@ -291,7 +293,7 @@ async function iniciar() {
     app.quit();
     return;
   }
-  if (demonstracao) janela.setTitle("Gestão de Floriculturas — demonstração");
+  if (demonstracao) janela.setTitle("Sistema de Gestão para Floriculturas (demonstração)");
   await janela.loadURL(`http://127.0.0.1:${porta}/`);
   if (AUTOTESTE) autoteste();
   if (CAPTURAS) capturas();
@@ -304,7 +306,7 @@ async function autoteste() {
     const estado = await (await fetch(`http://127.0.0.1:${porta}/api/estado`)).json();
     const tela = await janela.webContents.executeJavaScript("document.querySelector('.entrada-form h2')?.textContent || document.body.innerText.slice(0, 80)");
     const imagem = await janela.webContents.capturePage();
-    const arquivo = path.join(app.getPath("temp"), "floricultura-autoteste.png");
+    const arquivo = path.join(app.getPath("temp"), "operatto-autoteste.png");
     fs.writeFileSync(arquivo, imagem.toPNG());
     console.log(`AUTOTESTE ${JSON.stringify({ porta, url: janela.webContents.getURL(), estado, tela, perfis: servidor.banco.um("select count(*) as n from perfis").n, copias: fs.readdirSync(servidor.pastaCopias).length, captura: arquivo })}`);
   } catch (erro) {
@@ -313,7 +315,7 @@ async function autoteste() {
   app.quit();
 }
 
-// Gera imagens das telas com os dados de exemplo (desenvolvimento): FLORICULTURA_CAPTURAS=pasta FLORICULTURA_DADOS=dados-dev
+// Gera imagens das telas com os dados de exemplo (desenvolvimento): OPERATTO_CAPTURAS=pasta OPERATTO_DADOS=dados-dev
 async function capturas() {
   const espera = (ms) => new Promise((r) => setTimeout(r, ms));
   const js = (codigo) => janela.webContents.executeJavaScript(codigo);
@@ -326,7 +328,7 @@ async function capturas() {
     janela.setContentSize(1440, 900);
     await js("localStorage.clear(); location.hash = ''; location.reload()");
     await salvar("01-entrada");
-    const [usuario, senha] = (process.env.FLORICULTURA_ACESSO || "").split(":");
+    const [usuario, senha] = (process.env.OPERATTO_ACESSO || "").split(":");
     await js(`(async () => { const demo = document.querySelector('[data-entrar-demo]'); if (demo) return demo.click(); const f = document.querySelector('form.entrada-form'); f.elements.usuario.value = ${JSON.stringify(usuario || "")}; f.elements.senha.value = ${JSON.stringify(senha || "")}; f.requestSubmit(); })()`);
     await espera(3000);
     janela.webContents.setZoomFactor(0.72); // cabe mais da tela em cada imagem
